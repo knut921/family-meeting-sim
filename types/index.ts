@@ -4,6 +4,7 @@ export interface Participant {
   role: string;
   tags: string[];
   system_prompt: string;
+  avatar?: string; // <--- 加上這一行
 }
 
 export interface SubTopic {

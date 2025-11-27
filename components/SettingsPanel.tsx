@@ -47,6 +47,43 @@ export default function SettingsPanel({
     onSubTopicsChange(subTopics.filter((st) => st.id !== id));
   };
 
+  // --- 頭像生成邏輯 (用於設定區預覽) ---
+  const getAvatarPreview = (p: Participant) => {
+    // 1. 主持人
+    if (p.name === '主持人') {
+      return `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Host&backgroundColor=facc15`;
+    }
+
+    // 2. 自訂照片 (如果有的話)
+    // (使用 as any 避免 TypeScript 報錯，如果您的 type 沒改)
+    if ((p as any).avatar) {
+      return (p as any).avatar;
+    }
+
+    // 3. DiceBear 生成邏輯
+    let seed = p.id; // 設定區建議用 ID 當種子，避免打字時頭像一直閃爍變換
+    let style = 'notionists';
+    const tagsStr = p.tags.join(',');
+
+    // 特殊角色外觀
+    if (tagsStr.includes('嬰兒') || tagsStr.includes('1歲')) {
+      style = 'fun-emoji';
+      seed = 'baby-' + seed;
+    } else if (tagsStr.includes('6歲') || tagsStr.includes('4歲')) {
+      seed = 'child-' + seed;
+    } else if (tagsStr.includes('65歲')) {
+      seed = 'elder-' + seed;
+    }
+
+    // 性別微調
+    let url = `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}`;
+    if (tagsStr.includes('女')) {
+      url += `&baseColor=f9c9b6`;
+    }
+
+    return url + '&backgroundColor=transparent';
+  };
+
   return (
     <div className="flex flex-col h-full bg-white text-slate-800">
       {/* 標題 */}
@@ -73,7 +110,7 @@ export default function SettingsPanel({
           />
         </section>
 
-        {/* 2. 參與者名單 (精簡顯示) */}
+        {/* 2. 參與者名單 (含頭像) */}
         <section>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-semibold text-slate-700">參與者名單</label>
@@ -89,59 +126,73 @@ export default function SettingsPanel({
           <div className="space-y-3">
             {participants.map((p) => (
               <div key={p.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 hover:bg-white transition-colors relative group">
-                {/* 刪除按鈕 (Hover 顯示) */}
+                {/* 刪除按鈕 */}
                 <button
                   onClick={() => onRemoveCharacter(p.id)}
                   disabled={isRunning}
-                  className="absolute top-2 right-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                   title="移除此角色"
                 >
                   ✕
                 </button>
 
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-bold uppercase">姓名</label>
-                    <input
-                      type="text"
-                      value={p.name}
-                      onChange={(e) => onUpdateCharacter({ ...p, name: e.target.value })}
-                      className="w-full text-sm bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1"
-                      disabled={isRunning}
-                    />
+                <div className="flex gap-3 items-start">
+                  
+                  {/* ★ 左側：頭像預覽 ★ */}
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="w-12 h-12 rounded-full border border-slate-200 bg-white overflow-hidden shadow-sm">
+                      <img 
+                        src={getAvatarPreview(p)} 
+                        alt="avatar" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-bold uppercase">角色/稱謂</label>
-                    <input
-                      type="text"
-                      value={p.role}
-                      onChange={(e) => onUpdateCharacter({ ...p, role: e.target.value })}
-                      className="w-full text-sm bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1"
-                      disabled={isRunning}
-                    />
-                  </div>
-                </div>
 
-                {/* 標籤輸入 (簡化版) */}
-                <div>
-                  <label className="text-[10px] text-slate-500 font-bold uppercase">特徵標籤 (逗號分隔)</label>
-                  <input
-                    type="text"
-                    value={p.tags.join(', ')}
-                    onChange={(e) => onUpdateCharacter({ ...p, tags: e.target.value.split(',').map(t => t.trim()) })}
-                    placeholder="例如：65歲, 保守"
-                    className="w-full text-xs bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1 text-slate-600"
-                    disabled={isRunning}
-                  />
+                  {/* 右側：輸入欄位 */}
+                  <div className="flex-1 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-bold uppercase">姓名</label>
+                        <input
+                          type="text"
+                          value={p.name}
+                          onChange={(e) => onUpdateCharacter({ ...p, name: e.target.value })}
+                          className="w-full text-sm bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1"
+                          disabled={isRunning}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-bold uppercase">角色/稱謂</label>
+                        <input
+                          type="text"
+                          value={p.role}
+                          onChange={(e) => onUpdateCharacter({ ...p, role: e.target.value })}
+                          className="w-full text-sm bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1"
+                          disabled={isRunning}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-bold uppercase">特徵標籤 (影響頭像)</label>
+                      <input
+                        type="text"
+                        value={p.tags.join(', ')}
+                        onChange={(e) => onUpdateCharacter({ ...p, tags: e.target.value.split(',').map(t => t.trim()) })}
+                        placeholder="例如：女, 1歲, 嬰兒"
+                        className="w-full text-xs bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1 text-slate-600"
+                        disabled={isRunning}
+                      />
+                    </div>
+                  </div>
                 </div>
-                
-                {/* 隱藏了 System Prompt 欄位 */}
               </div>
             ))}
           </div>
         </section>
 
-        {/* 3. 子議題 (選填) */}
+        {/* 3. 子議題 */}
         <section>
           <label className="block text-sm font-semibold text-slate-700 mb-2">討論子議題 (選填)</label>
           <div className="flex gap-2 mb-2">
@@ -195,14 +246,14 @@ export default function SettingsPanel({
             disabled={isRunning}
           />
           <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-            <span>短討論 (1)</span>
-            <span>長篇大論 (10)</span>
+            <span>短討論</span>
+            <span>長討論</span>
           </div>
         </section>
 
       </div>
 
-      {/* 底部按鈕區 */}
+      {/* 底部按鈕 */}
       <div className="p-4 border-t border-slate-100 bg-slate-50 flex-shrink-0">
         <button
           onClick={onStart}

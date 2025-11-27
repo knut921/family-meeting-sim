@@ -139,18 +139,31 @@ export default function Home() {
       alert('目前沒有對話紀錄可供列印');
       return;
     }
-    const getAvatarUrl = (name: string, participant?: Participant) => {
-      if (name === '主持人') return `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Host&backgroundColor=facc15`;
-      let seed = name;
-      let gender = 'male';
-      if (participant) {
-        seed = participant.id;
-        if (participant.tags.join(',').includes('女')) gender = 'female';
-      }
-      let url = `https://api.dicebear.com/9.x/notionists/svg?seed=${seed}`;
-      if (gender === 'female') url += `&baseColor=f9c9b6`;
-      return url + '&backgroundColor=transparent';
-    };
+// 內建頭像生成邏輯 (PDF版)
+const getAvatarUrl = (name: string, participant?: Participant) => {
+  if (name === '主持人') return `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Host&backgroundColor=facc15`;
+  
+  // ★ 加入這段：優先使用自訂照片
+  // 注意：這裡必須確保路徑是完整的 URL (雖然瀏覽器通常能解析相對路徑，但在某些 iframe 環境下，加 window.origin 比較保險)
+  if (participant && (participant as any).avatar) {
+    // 如果是本機圖片，直接回傳相對路徑即可
+    return (participant as any).avatar;
+  }
+
+  // 以下維持原本邏輯
+  let seed = name;
+  let style = 'notionists';
+  if (participant) {
+    seed = participant.id;
+    const tagsStr = participant.tags.join(',');
+    if (tagsStr.includes('嬰兒')) { style = 'fun-emoji'; seed = 'baby-' + seed; }
+    else if (tagsStr.includes('6歲')) seed = 'child-' + seed;
+    else if (tagsStr.includes('65歲')) seed = 'elder-' + seed;
+    
+    if (tagsStr.includes('女')) seed += '&baseColor=f9c9b6';
+  }
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}&backgroundColor=transparent`;
+};
 
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';

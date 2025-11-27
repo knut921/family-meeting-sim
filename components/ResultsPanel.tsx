@@ -31,48 +31,39 @@ export default function ResultsPanel({
     }
   }, [messages, streamContent]);
 
-  // --- 核心魔法：根據人設生成頭像 URL (家庭版優化) ---
-  const getAvatarUrl = (name: string, participant?: Participant) => {
-    // 1. 主持人維持機器人風格
-    if (name === '主持人') {
-      return `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Host&backgroundColor=facc15`;
+// --- 核心魔法：頭像生成 (支援自訂照片) ---
+const getAvatarUrl = (name: string, participant?: Participant) => {
+  // 1. 主持人維持機器人
+  if (name === '主持人') {
+    return `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Host&backgroundColor=facc15`;
+  }
+
+  // 2. ★ 如果角色有設定自訂照片，直接回傳照片路徑
+  // (使用 'as any' 繞過 TypeScript 檢查，以防您沒改 types 檔)
+  if (participant && (participant as any).avatar) {
+    return (participant as any).avatar;
+  }
+
+  // 3. 原本的 DiceBear 生成邏輯 (當備案)
+  let seed = name;
+  let style = 'notionists';
+
+  if (participant) {
+    seed = participant.id;
+    const tagsStr = participant.tags.join(',');
+    
+    if (tagsStr.includes('嬰兒') || tagsStr.includes('1歲')) {
+      style = 'fun-emoji'; seed = 'baby-' + seed; 
+    } else if (tagsStr.includes('6歲') || tagsStr.includes('4歲')) {
+      seed = 'child-' + seed;
+    } else if (tagsStr.includes('65歲')) {
+      seed = 'elder-' + seed;
     }
-
-    let seed = name;
-    let style = 'notionists'; // 預設使用素描風格 (適合成人)
-
-    if (participant) {
-      seed = participant.id;
-      const tagsStr = participant.tags.join(','); // 將標籤轉為字串方便判斷
-      
-      // --- 特殊角色外觀優化 ---
-      
-      // 嬰兒 (1歲)：改用可愛的 Emoji 風格
-      if (tagsStr.includes('嬰兒') || tagsStr.includes('1歲')) {
-        style = 'fun-emoji'; 
-        seed = 'baby-' + seed; 
-      } 
-      // 小孩 (4歲, 6歲)：加上前綴讓種子產生變化 (雖然還是 Notionists，但會長得不一樣)
-      // 您也可以試試看改用 'adventurer' 風格會更像小孩
-      else if (tagsStr.includes('6歲') || tagsStr.includes('4歲')) {
-        seed = 'child-' + seed;
-      } 
-      // 長輩 (65歲)
-      else if (tagsStr.includes('65歲')) {
-        seed = 'elder-' + seed;
-      }
-      
-      // --- 性別微調 ---
-      // 如果是女性，嘗試透過參數調整 (Notionists 支援 baseColor 或 flip)
-      if (tagsStr.includes('女')) {
-         // 這裡加個後綴參數稍微改變膚色或特徵，讓男女種子差異更大
-         seed += '&baseColor=f9c9b6'; 
-      }
-    }
-
-    // 回傳 DiceBear API 網址
-    return `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}&backgroundColor=transparent`;
-  };
+    if (tagsStr.includes('女')) seed += '&baseColor=f9c9b6';
+  }
+  
+  return `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}&backgroundColor=transparent`;
+};
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
